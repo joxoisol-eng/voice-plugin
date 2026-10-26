@@ -1,10 +1,10 @@
 /**
- * 语音插件 (v2.0.0 - 真正的酒馆原生附件流)
+ * 语音插件 (v2.1.0 - 真正的酒馆原生附件流，修复 audio_url 规范传真音频)
  *
  * 核心逻辑：
  * 1. 像发图片一样发语音：录音完成后挂载在输入框上方，打字后点击酒馆自带的【发送】按钮。
  * 2. 100% 走酒馆原生通道：不碰任何外部 API 请求，直接通过酒馆原生后台与密钥发送，绝不报 miss api key！
- * 3. 拒绝奇怪的两步预解析：音频通过酒馆多模态管道随文字一次性直达 AI，AI 听见声音直接按角色回复。
+ * 3. 严格遵循酒馆 prompt-converters 规范：注入官方 audio_url，酒馆后端会自动转为 Gemini 的 inlineData 真实音频传给模型！
  * 4. 预览与一键删除：挂载时可点 ▶ 试听，点 ✕ 立即丢弃不发送。
  */
 
@@ -22,7 +22,7 @@ let recordTimer = null;
 let recordSeconds = 0;
 
 jQuery(async () => {
-  console.log('[VoicePlugin] 正在启动纯原生语音附件扩展 v2.0.0...');
+  console.log('[VoicePlugin] 正在启动纯原生语音附件扩展 v2.1.0...');
 
   // 轮询等待输入栏就绪
   let attempts = 0;
@@ -44,7 +44,6 @@ jQuery(async () => {
   }, 200);
 
   // 核心钩子：监听酒馆原生生成前夕 (CHAT_COMPLETION_SETTINGS_READY)
-  // 当用户点击酒馆原生发送时，在此把挂载的语音注入到发送报文中！
   registerNativeGenerationHook();
 });
 
@@ -145,9 +144,9 @@ function initVoiceUI($sendBtn, $textarea) {
     $('#gemini_voice_chip_waves').removeClass('playing');
   };
 
-  console.log('[VoicePlugin] 插件 v2.0.0 UI 就绪！');
+  console.log('[VoicePlugin] 插件 v2.1.0 UI 就绪！');
   if (typeof toastr !== 'undefined') {
-    toastr.success('🎙️ 语音插件 v2.0.0 已就绪！(纯血原生附件模式)');
+    toastr.success('🎙️ 语音插件 v2.1.0 已就绪！');
   }
 }
 
@@ -239,7 +238,7 @@ function attachAudioAsPending(blob, seconds) {
   $('#gemini_voice_mic_btn').addClass('attached');
 
   if (typeof toastr !== 'undefined') {
-    toastr.success('🎙️ 语音附件已挂载！像图片一样随输入框文字一起直接发送');
+    toastr.success('🎙️ 语音附件已挂载！直接输入文字即可一起发送');
   }
 }
 
@@ -278,37 +277,34 @@ function togglePreviewAudio() {
 // ==================== 核心：酒馆原生请求拦截挂载 ====================
 
 function registerNativeGenerationHook() {
-  // 监听酒馆原生生成参数准备就绪事件 (这发生在酒馆正式向后台发请求的前一瞬间)
+  // 监听酒馆原生生成参数准备就绪事件 (发生在酒馆向后台发请求的前一瞬间)
   eventSource.on(event_types.CHAT_COMPLETION_SETTINGS_READY, (generate_data) => {
     if (!pendingAudioBase64 || !generate_data || !Array.isArray(generate_data.messages)) {
       return;
     }
 
-    console.log('[VoicePlugin] 捕获到酒馆原生发送！正在注入多模态音频数据...');
+    console.log('[VoicePlugin] 捕获到酒馆原生发送！正在注入真实音频数据流...');
 
     // 找到最后一轮用户消息
     const lastUserMsg = generate_data.messages[generate_data.messages.length - 1];
     if (!lastUserMsg || lastUserMsg.role !== 'user') return;
 
     const base64Data = pendingAudioBase64;
-    const duration = pendingAudioDuration;
     const mimeType = pendingAudioBlob?.type || 'audio/webm';
     const originalText = typeof lastUserMsg.content === 'string' ? lastUserMsg.content : '';
 
-    // 将用户正文重构为多模态复合格式 (同时兼容 input_audio 与 inlineData)
-    // 这样无论酒馆连接的是 Gemini 原生反代还是 OpenAI 格式反代，都能直接听懂！
+    // 将用户消息正文重构为包含真实音频的多模态格式
     const multimodalContent = [];
 
-    // 1. 注入文字提示
-    const promptText = (originalText ? `${originalText}\n\n` : '') +
-      `【系统提示】：用户在发送本条消息时随附了一段时长 ${duration} 秒的原声语音（包含真实音调、哼唱或情绪语气）。请仔细聆听音频的声音细节，并结合文字，以角色身份进行沉浸、自然的回复。`;
-
+    // 1. 酒馆官方原生 audio_url 规范 (SillyTavern prompt-converters 识别后会自动转为 Gemini 原生 inlineData！)
     multimodalContent.push({
-      type: 'text',
-      text: promptText
+      type: 'audio_url',
+      audio_url: {
+        url: `data:${mimeType};base64,${base64Data}`
+      }
     });
 
-    // 2. 注入多模态音频 Part (标准 OpenAI input_audio 格式)
+    // 2. 标准 OpenAI input_audio 格式 (如果反代走的是纯 OpenAI 转发协议)
     multimodalContent.push({
       type: 'input_audio',
       input_audio: {
@@ -317,18 +313,22 @@ function registerNativeGenerationHook() {
       }
     });
 
-    // 3. 补充 Gemini 原生 inlineData Part (双重保险，反代绝不会丢失)
-    multimodalContent.push({
-      type: 'image_url', // 部分转发器借道字段
-      inlineData: {
-        mimeType: mimeType,
-        data: base64Data
-      }
-    });
+    // 3. 用户输入的文字正文 (原汁原味，不加画蛇添足的伪系统提示)
+    if (originalText) {
+      multimodalContent.push({
+        type: 'text',
+        text: originalText
+      });
+    } else {
+      multimodalContent.push({
+        type: 'text',
+        text: '（发送了一段语音）'
+      });
+    }
 
     lastUserMsg.content = multimodalContent;
 
-    console.log('[VoicePlugin] 原生注入成功！音频随同文字一起送出。');
+    console.log('[VoicePlugin] 原生音频 Part 注入成功！通过酒馆原生 API 一同送达 AI。');
 
     // 发送后自动清理挂载胶囊
     setTimeout(() => {
@@ -336,7 +336,7 @@ function registerNativeGenerationHook() {
     }, 100);
   });
 
-  // 监听用户消息在聊天窗口渲染事件，为它挂上漂亮的播放条 (仅限前端展示，不污染 mes 正文)
+  // 渲染用户消息上的播放器 (仅限前端展示，不污染 mes 正文)
   eventSource.on(event_types.USER_MESSAGE_RENDERED, (messageId) => {
     if (pendingAudioUrl) {
       const $lastMsg = $('.mes[mesid="' + messageId + '"], .mes:last');
