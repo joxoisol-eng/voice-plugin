@@ -1,0 +1,243 @@
+/* ============================================================
+   SillyTavern 语音插件样式表 (极简低调版)
+   ============================================================ */
+
+/* 挂载在输入框正上方的语音胶囊 - 紧凑型独立药丸设计 */
+.gemini-voice-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--SmartThemeBodyColor, #2d3139);
+  border: 1px solid var(--SmartThemeBorderColor, #4f46e5);
+  border-left: 4px solid #6366f1;
+  border-radius: 18px;
+  padding: 4px 8px 4px 10px;
+  margin: 4px 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  animation: slideDown 0.18s ease-out;
+  user-select: none;
+  max-width: min(280px, calc(100vw - 40px));
+  box-sizing: border-box;
+  z-index: 10;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.gemini-voice-chip-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.chip-play-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 13px;
+  background: #4f46e5;
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+  transition: transform 0.12s;
+}
+
+.chip-play-btn:active {
+  transform: scale(0.9);
+}
+
+.chip-waves {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 14px;
+}
+
+.chip-waves span {
+  display: inline-block;
+  width: 2.5px;
+  height: 5px;
+  background: #818cf8;
+  border-radius: 1.5px;
+  transition: height 0.15s;
+}
+
+.chip-waves.playing span:nth-child(1) { animation: waveAnim 0.6s infinite alternate ease-in-out; }
+.chip-waves.playing span:nth-child(2) { animation: waveAnim 0.8s infinite alternate 0.2s ease-in-out; }
+.chip-waves.playing span:nth-child(3) { animation: waveAnim 0.7s infinite alternate 0.4s ease-in-out; }
+.chip-waves.playing span:nth-child(4) { animation: waveAnim 0.5s infinite alternate 0.1s ease-in-out; }
+
+@keyframes waveAnim {
+  0% { height: 3px; }
+  100% { height: 14px; }
+}
+
+.chip-duration {
+  font-size: 13px;
+  font-weight: 700;
+  color: #a5b4fc;
+  min-width: 20px;
+}
+
+.chip-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--SmartThemeTextColor, #e2e8f0);
+  white-space: nowrap;
+}
+
+/* 手机触控优化的超大删除按钮 */
+.chip-del-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  flex-shrink: 0;
+  touch-action: manipulation;
+  transition: all 0.15s;
+}
+
+.chip-del-btn:active {
+  background: #ef4444;
+  color: #ffffff;
+  transform: scale(0.92);
+}
+
+/* 录音中的轻量条幅 */
+.gemini-voice-recording-banner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid #ef4444;
+  border-radius: 16px;
+  padding: 5px 12px;
+  margin: 4px 8px;
+  color: #f87171;
+  max-width: min(300px, calc(100vw - 40px));
+  animation: pulseBorder 1.5s infinite;
+  box-sizing: border-box;
+}
+
+@keyframes pulseBorder {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  70% { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.recording-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.recording-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: #ef4444;
+  animation: blink 0.8s infinite alternate;
+}
+
+@keyframes blink {
+  from { opacity: 0.3; }
+  to { opacity: 1; }
+}
+
+.recording-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-record-stop {
+  padding: 3px 8px;
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.btn-record-cancel {
+  padding: 3px 6px;
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* 输入框旁边的麦克风按钮 */
+#gemini_voice_mic_btn {
+  transition: all 0.2s ease;
+  user-select: none;
+}
+#gemini_voice_mic_btn.recording {
+  color: #ef4444 !important;
+  animation: pulseIcon 1.2s infinite;
+}
+@keyframes pulseIcon {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+#gemini_voice_mic_btn.attached {
+  color: #818cf8 !important;
+}
+
+/* 聊天历史消息里的语音卡片 */
+.st-gemini-voice-bubble {
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 14px;
+  padding: 8px 12px;
+  margin: 6px 0;
+  max-width: 290px;
+  box-sizing: border-box;
+}
+
+.st-voice-player-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.st-voice-audio {
+  height: 32px;
+  max-width: 200px;
+  border-radius: 16px;
+  outline: none;
+}
+
+.st-voice-user-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--SmartThemeTextColor, inherit);
+  word-break: break-word;
+}
